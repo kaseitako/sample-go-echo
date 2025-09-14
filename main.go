@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -14,6 +16,13 @@ import (
 // @Schema HealthResponse
 type HealthResponse struct {
 	Status string `json:"status" example:"OK"`
+}
+
+// ProtectedResponse represents the protected endpoint response
+// @Schema ProtectedResponse
+type ProtectedResponse struct {
+	Message string `json:"message" example:"Access granted"`
+	UserID  string `json:"user_id" example:"authenticated_user"`
 }
 
 // @title Sample Go Echo API
@@ -31,6 +40,45 @@ type HealthResponse struct {
 // @host localhost:8080
 // @BasePath /
 // @schemes http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
+// BearerTokenAuth returns a middleware function that validates Bearer token
+func BearerTokenAuth() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			// Get expected token from environment variable
+			expectedToken := os.Getenv("BEARER_TOKEN")
+			if expectedToken == "" {
+				expectedToken = "your-secret-bearer-token" // fallback for development
+			}
+
+			// Get Authorization header
+			auth := c.Request().Header.Get("Authorization")
+			if auth == "" {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Missing Authorization header")
+			}
+
+			// Check if it's a Bearer token
+			if !strings.HasPrefix(auth, "Bearer ") {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid Authorization header format")
+			}
+
+			// Extract token
+			token := strings.TrimPrefix(auth, "Bearer ")
+
+			// Validate token
+			if token != expectedToken {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid Bearer token")
+			}
+
+			return next(c)
+		}
+	}
+}
+
 func main() {
 	// Create Echo instance
 	e := echo.New()
@@ -42,6 +90,11 @@ func main() {
 
 	// Routes
 	e.GET("/hello", hello)
+
+	// Protected routes - require Bearer token
+	protected := e.Group("")
+	protected.Use(BearerTokenAuth())
+	protected.GET("/protected", protectedEndpoint)
 
 	// Swagger documentation
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
@@ -61,6 +114,24 @@ func main() {
 func hello(c echo.Context) error {
 	response := HealthResponse{
 		Status: "OK",
+	}
+	return c.JSON(http.StatusOK, response)
+}
+
+// protectedEndpoint godoc
+// @Summary Protected endpoint
+// @Description Returns protected data that requires Bearer token authentication
+// @Tags protected
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} ProtectedResponse
+// @Failure 401 {object} map[string]string
+// @Router /protected [get]
+func protectedEndpoint(c echo.Context) error {
+	response := ProtectedResponse{
+		Message: "Access granted to protected resource",
+		UserID:  "authenticated_user",
 	}
 	return c.JSON(http.StatusOK, response)
 }

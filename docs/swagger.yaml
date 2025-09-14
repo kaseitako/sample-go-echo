@@ -6,6 +6,15 @@ definitions:
         example: OK
         type: string
     type: object
+  main.ProtectedResponse:
+    properties:
+      message:
+        example: Access granted
+        type: string
+      user_id:
+        example: authenticated_user
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -35,6 +44,35 @@ paths:
       summary: Health check endpoint
       tags:
       - health
+  /protected:
+    get:
+      consumes:
+      - application/json
+      description: Returns protected data that requires Bearer token authentication
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ProtectedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Protected endpoint
+      tags:
+      - protected
 schemes:
 - http
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
