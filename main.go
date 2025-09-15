@@ -10,6 +10,8 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 
 	_ "sample-go-echo/docs"
+	"sample-go-echo/database"
+	"sample-go-echo/handlers"
 )
 
 // HealthResponse represents the health check response
@@ -80,6 +82,10 @@ func BearerTokenAuth() echo.MiddlewareFunc {
 }
 
 func main() {
+	// Initialize database
+	database.InitDB()
+	defer database.CloseDB()
+
 	// Create Echo instance
 	e := echo.New()
 
@@ -90,6 +96,13 @@ func main() {
 
 	// Routes
 	e.GET("/hello", hello)
+
+	// User CRUD routes - no authentication required
+	e.POST("/users", handlers.CreateUser)
+	e.GET("/users", handlers.GetAllUsers)
+	e.GET("/users/:id", handlers.GetUser)
+	e.PUT("/users/:id", handlers.UpdateUser)
+	e.DELETE("/users/:id", handlers.DeleteUser)
 
 	// Protected routes - require Bearer token
 	protected := e.Group("")

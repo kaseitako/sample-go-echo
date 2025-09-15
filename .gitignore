@@ -19,6 +19,7 @@ go.work
 
 # Build output
 sample-app
+app
 dist/
 build/
 
@@ -62,3 +63,9 @@ coverage.html
 *.prof
 mem.prof
 cpu.prof
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+sample.db
